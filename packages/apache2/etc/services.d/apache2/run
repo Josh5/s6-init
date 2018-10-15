@@ -1,0 +1,7 @@
+#!/usr/bin/with-contenv bash
+
+# Move default config directory
+export APACHE_CONFDIR=/config/etc/apache2
+export APACHE_ENVVARS=$APACHE_CONFDIR/envvars
+
+exec /usr/sbin/apachectl -D FOREGROUND
