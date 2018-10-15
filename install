@@ -1,0 +1,36 @@
+#!/bin/bash
+#
+
+
+BASE_DIR="$( cd "$( dirname "$( readlink -f "${BASH_SOURCE[0]}")" )" && pwd )";
+PACKAGE_DIR=${BASE_DIR}/packages;
+INSTALL_DEST=${INSTALL_DEST:-/};
+
+
+# Install the package
+install_package() {
+    if [[ ! -z ${1} ]]; then
+        PACKAGE=${1};
+        # Install defaults
+        if [[ -d ${PACKAGE_DIR}/${PACKAGE}/defaults ]]; then
+            mkdir -p ${INSTALL_DEST}/defaults/${PACKAGE};
+            cp -rf ${PACKAGE_DIR}/${PACKAGE}/defaults/* ${INSTALL_DEST}/defaults/${PACKAGE}/;
+        fi
+        # Install etc
+        if [[ -d ${PACKAGE_DIR}/${PACKAGE}/etc ]]; then
+            mkdir -p ${INSTALL_DEST}/etc;
+            cp -rf ${PACKAGE_DIR}/${PACKAGE}/etc/* ${INSTALL_DEST}/etc/;
+        fi
+        # Install usr
+        if [[ -d ${PACKAGE_DIR}/${PACKAGE}/usr ]]; then
+            mkdir -p ${INSTALL_DEST}/usr;
+            cp -rf ${PACKAGE_DIR}/${PACKAGE}/usr/* ${INSTALL_DEST}/usr/;
+        fi
+    fi
+}
+
+
+# Run
+for PACKAGE in ${SERVICES}; do
+    install_package ${PACKAGE};
+done

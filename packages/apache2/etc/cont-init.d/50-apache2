@@ -1,0 +1,88 @@
+#!/usr/bin/with-contenv bash
+
+
+CWD=${PWD};
+SCRIPT_NAME=$(basename $BASH_SOURCE);
+
+
+apache_config() {
+    mkdir -p \
+        /app/www \
+        /config/etc/apache2 \
+        /logs/apache2${APACHE_SUFFIX} \
+        /run/apache2
+    if [[ ! -f /config/etc/apache2/apache2.conf ]]; then
+        echo "**** (${SCRIPT_NAME} - apache_config) Setting up initial apache2 configs ****";
+        mkdir -p \
+            /config/etc/apache2 \
+            /config/etc/apache2/sites-available \
+            /config/etc/apache2/sites-enabled;
+        # Copy the default configs from /etc to /config
+        cp -rf /etc/apache2/* /config/etc/apache2/;
+        # Copy defaults to /config
+        cp -rf /defaults/apache2/etc/apache2/* /config/etc/apache2/;
+        # Remove current sites
+        rm -rf /config/etc/apache2/sites-available/*;
+        rm -rf /config/etc/apache2/sites-enabled/*;
+        # Install and enable default site config
+        cp -f /defaults/apache2/default.conf /config/etc/apache2/sites-available/default.conf;
+        cd /config/etc/apache2/sites-enabled/;
+        ln -s ../sites-available/default.conf default.conf;
+        cd ${CWD};
+    fi
+    # Install the default placeholder html file
+    if [[ $(find /config/app/www -type f | wc -l) -eq 0 ]]; then
+        echo "**** (${SCRIPT_NAME} - apache_config) Install default index page ****";
+        cp /defaults/apache2/index.html /config/app/www/index.html;
+    fi
+    # Configure any apache env variables
+    if [[ ! -z ${APACHE_SUFFIX} ]]; then
+        echo "**** (${SCRIPT_NAME} - apache_config) Update Apache SUFFIX environment variable to '${APACHE_SUFFIX}' ****";
+        sed -i -e "s|SUFFIX=.*$|SUFFIX=${APACHE_SUFFIX}|" /config/etc/apache2/envvars;
+    fi
+    if [[ ! -z ${APACHE_LOG_DIR} ]]; then
+        echo "**** (${SCRIPT_NAME} - apache_config) Update Apache APACHE_LOG_DIR environment variable to '${APACHE_LOG_DIR}' ****";
+        sed -i -e "s|APACHE_LOG_DIR=.*$|APACHE_LOG_DIR=${APACHE_LOG_DIR}|" /config/etc/apache2/envvars;
+    fi
+    # Now that the apache variables are set, lets import all of them
+    source /etc/apache2/envvars;
+    # Remove any previous pid files
+    if [[ -f ${APACHE_PID_FILE} ]]; then
+        rm -f ${APACHE_PID_FILE};
+    fi
+    # Make the log directory if it does not already exists
+    mkdir -p ${APACHE_LOG_DIR};
+    # Set default access logs to stdout and stderr
+    mkdir -p /var/log/apache2${APACHE_SUFFIX};
+    if [[ ! -h /var/log/apache2${APACHE_SUFFIX}/access.log ]]; then
+        echo "**** (${SCRIPT_NAME} - apache_config) Redirect default apache2 access.log to stdout ****";
+        cd /var/log/apache2${APACHE_SUFFIX};
+        rm -rf access.log;
+        ln -s /dev/stdout access.log;
+        cd ${CWD};
+    fi
+    if [[ ! -h /var/log/apache2${APACHE_SUFFIX}/error.log ]]; then
+        echo "**** (${SCRIPT_NAME} - apache_config) Redirect default apache2 error.log to stderr ****";
+        cd /var/log/apache2${APACHE_SUFFIX};
+        rm -rf error.log;
+        ln -s /dev/stderr error.log;
+        cd ${CWD};
+    fi
+    if [[ ! -h /var/log/apache2${APACHE_SUFFIX}/other_vhosts_access.log ]]; then
+        echo "**** (${SCRIPT_NAME} - apache_config) Redirect default apache2 other_vhosts_access.log to stdout ****";
+        cd /var/log/apache2${APACHE_SUFFIX};
+        rm -rf other_vhosts_access.log;
+        ln -s /dev/stdout other_vhosts_access.log;
+        cd ${CWD};
+    fi
+    # Finally set permissions on all folders
+    chown -R $PUID:$PGID \
+        /run/apache2 \
+        /var/lib/apache2 \
+        /app/www
+    chmod -R g+w \
+        /app/www
+}
+
+
+apache_config;
