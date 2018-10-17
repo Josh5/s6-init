@@ -1,5 +1,8 @@
 #!/usr/bin/with-contenv bash
 
+CWD=${PWD};
+SCRIPT_NAME=$(basename $BASH_SOURCE);
+
 generate_ssl_keys() {
     mkdir -p /config/keys
     SUBJECT="/C=NZ/ST=Some-State/L=Some-City/O=ORG/OU=PROJ/CN=*";
