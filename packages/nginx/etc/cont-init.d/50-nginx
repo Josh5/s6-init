@@ -1,0 +1,59 @@
+#!/usr/bin/with-contenv bash
+
+CWD=${PWD};
+SCRIPT_NAME=$(basename $BASH_SOURCE);
+
+configure_nginx() {
+    echo "**** (${SCRIPT_NAME} - configure_nginx) Create folders ****";
+    mkdir -p \
+        /config/nginx/site-confs \
+        /var/lib/nginx/tmp/client_body \
+        /var/log/nginx \
+        /var/tmp/nginx \
+        /run/nginx \
+        /tmp
+    if [[ ! -f /config/nginx/nginx.conf ]]; then
+        cp /defaults/nginx/nginx.conf /config/nginx/nginx.conf;
+    fi
+    if [[ ! -z ${NGINX_LOG_DIR} ]]; then
+        echo "**** (${SCRIPT_NAME} - configure_nginx) Update Nginx NGINX_LOG_DIR environment variable to '${NGINX_LOG_DIR}' ****";
+        # Update log dir
+        mkdir -p ${NGINX_LOG_DIR};
+        chown -R ${PUID}:${PGID} ${NGINX_LOG_DIR};
+        sed -i -e "s|access_log .*$|error_log ${NGINX_LOG_DIR}/access.log;|" /config/nginx/nginx.conf;
+        sed -i -e "s|error_log .*$|error_log ${NGINX_LOG_DIR}/error.log;|" /config/nginx/nginx.conf;
+        # Update logrotate
+        sed -i -e "s|LOGS {|${NGINX_LOG_DIR}/*.log {|" /etc/logrotate.d/nginx;
+        chmod 644 /etc/logrotate.d/nginx;
+    else
+        echo "**** (${SCRIPT_NAME} - configure_nginx) Sending logs to container ****";
+        rm -f /etc/logrotate.d/nginx;
+        # Set default access logs to stdout and stderr
+        if [[ ! -h /var/log/nginx/access.log ]]; then
+            echo "**** (${SCRIPT_NAME} - configure_nginx) Redirect default nginx access.log to stdout ****";
+            cd /var/log/nginx;
+            rm -rf access.log;
+            ln -s /dev/stdout access.log;
+            cd ${CWD};
+        fi
+        if [[ ! -h /var/log/nginx/error.log ]]; then
+            echo "**** (${SCRIPT_NAME} - configure_nginx) Redirect default nginx error.log to stderr ****";
+            cd /var/log/nginx;
+            rm -rf error.log;
+            ln -s /dev/stderr error.log;
+            cd ${CWD};
+        fi
+    fi
+    # Permissions
+    chown -R ${PUID}:${PGID} \
+        /config/nginx \
+        /var/lib/nginx \
+        /var/log/nginx \
+        /var/tmp/nginx \
+        /run/nginx
+    chmod -R g+w \
+        /config/nginx;
+    chmod -R 777 /tmp;
+}
+
+configure_nginx;
