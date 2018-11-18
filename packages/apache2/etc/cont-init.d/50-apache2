@@ -31,9 +31,9 @@ apache_config() {
         cd ${CWD};
     fi
     # Install the default placeholder html file
-    if [[ $(find /config/app/www -type f | wc -l) -eq 0 ]]; then
+    if [[ $(find /app/www -type f | wc -l) -eq 0 ]]; then
         echo "**** (${SCRIPT_NAME} - apache_config) Install default index page ****";
-        cp /defaults/apache2/index.html /config/app/www/index.html;
+        cp /defaults/apache2/index.html /app/www/index.html;
     fi
     # Configure any apache env variables
     if [[ ! -z ${APACHE_SUFFIX} ]]; then
