@@ -1,0 +1,125 @@
+#!/usr/bin/with-contenv bash
+
+
+CWD=${PWD};
+SCRIPT_NAME=$(basename $BASH_SOURCE);
+
+# Get the php version for this container
+PHP_VERSION=$(php -i | grep "PHP Version" | head -1 | grep --only-matching --perl-regexp "\\d+\.\\d+" | head -1);
+
+# Set veriables for the configuration location of the php version running in this container
+# TODO: Add support for more PHP versions
+if [[ ${PHP_VERSION} == '5.6' ]]; then
+    PHP_CONFIG_DIR=/etc/php/5.6
+    PHP_DEBUGGING_INI=${PHP_CONFIG_DIR}/fpm/conf.d/debugging.ini
+    PHP_WWW_CONF=/config/${PHP_CONFIG_DIR}/fpm/pool.d/www.conf
+    PHP_FPM_CONF=/config/etc/php/5.6/fpm/php-fpm.conf
+    PHP_INI=/config/etc/php/5.6/fpm/php.ini
+fi
+
+configure_phpfpm() {
+    mkdir -p \
+        /tmp/php/sessions \
+        /config/log/php \
+        /run/php
+    # Setup initial php configs
+    if [[ ! -d /config/etc/php ]]; then
+        echo "**** (${SCRIPT_NAME} - configure_phpfpm) Setting up initial php configs ****";
+        mkdir -p /config/etc/php;
+        # Copy default config files
+        cp -rf /etc/php/* /config/etc/php/;
+        # Overide with user provided config files
+        if [[ -e /defaults/etc/php ]]; then
+            cp -rf /defaults/etc/php/* /config/etc/php/;
+        fi
+        # Set php run user and group
+        sed -i -e "s|user = .*$|user = docker|" ${PHP_WWW_CONF};
+        sed -i -e "s|group = .*$|group = docker|" ${PHP_WWW_CONF};
+        sed -i -e "s|listen.owner = .*$|listen.owner = docker|" ${PHP_WWW_CONF};
+        sed -i -e "s|listen.group = .*$|listen.group = docker|" ${PHP_WWW_CONF};
+        # Set php logging output
+        if [[ ! -z ${PHP_LOG_DIR} ]]; then
+            echo "**** (${SCRIPT_NAME} - configure_phpfpm) Update PHP-FPM error_log environment variable to '${PHP_LOG_DIR}' ****";
+            sed -i -e "s|error_log = .*$|error_log = ${PHP_LOG_DIR}/php5.6-fpm.log|" ${PHP_FPM_CONF};
+            sed -i -e "s|^error_log =|;error_log =|" ${PHP_INI};
+            printf "error_log = ${PHP_LOG_DIR}/error.log\n" >> ${PHP_INI};
+        else
+            PHP_LOG_DIR=/var/log
+            mkdir -p ${PHP_LOG_DIR};
+            # If we are running apache then we just need to send all logs to it
+            if [[ ! -e /etc/services.d/apache2/run ]]; then
+                # Set default php logs to stdout
+                sed -i -e "s|error_log = .*$|error_log = ${PHP_LOG_DIR}/php-fpm.log|" ${PHP_FPM_CONF};
+                if [[ ! -h ${PHP_LOG_DIR}/php-fpm.log ]]; then
+                    echo "**** (${SCRIPT_NAME} - configure_phpfpm) Redirect default php-fpm log to stdout ****";
+                    cd ${PHP_LOG_DIR};
+                    rm -rf php-fpm.log;
+                    ln -s /dev/stdout php-fpm.log;
+                    cd ${CWD};
+                fi
+                # By disabling error_log all errors will be passed to apache
+                sed -i -e "s|^error_log =|;error_log =|" ${PHP_INI};
+                printf "error_log = ${PHP_LOG_DIR}/php_errors.log\n" >> ${PHP_INI};
+                if [[ ! -h ${PHP_LOG_DIR}/php_errors.log ]]; then
+                    echo "**** (${SCRIPT_NAME} - configure_phpfpm) Redirect default php-fpm php_errors.log to stderr ****";
+                    cd ${PHP_LOG_DIR};
+                    rm -rf php_errors.log;
+                    ln -s /dev/stderr php_errors.log;
+                    cd ${CWD};
+                fi
+            fi
+        fi
+        chown -R ${PUID}:${PGID} ${PHP_LOG_DIR};
+    fi
+    # Link php config folder to /config
+    if [[ ! -h /etc/php ]]; then
+        echo "**** (${SCRIPT_NAME} - configure_phpfpm) Binding php config folder ****";
+        rm -rf /etc/php;
+        ln -s /config/etc/php /etc/php;
+    fi
+    # Set permissions of the php directorys
+    chown -R ${PUID}:${PGID} \
+        /tmp/php/sessions \
+        /config/log/php \
+        /config/etc/php \
+        /run/php
+}
+
+php_debugging_config() {
+    # Configure php
+
+    if [[ ! -z ${PHP_DISPLAY_ERRORS} ]]; then
+        echo "**** (${SCRIPT_NAME} - php_debugging_config) Configuring PHP: display_errors = ${PHP_DISPLAY_ERRORS} ****";
+        sed -i -e "s|display_errors .*$|display_errors = ${PHP_DISPLAY_ERRORS}|" ${PHP_INI}
+    fi
+
+    if [[ "${DEBUGGING_MODULE}" == "xdebug" ]]; then
+        echo "**** (${SCRIPT_NAME} - php_debugging_config) Enabiling Xdebug for php debugging ****";
+        mkdir -p /config/log/xdebug;
+        chown -R ${PUID}:${PGID} /config/log/xdebug;
+        printf ";zend_extension=xdebug.so\n" > ${PHP_DEBUGGING_INI};
+        printf "xdebug.remote_enable=on\n" >> ${PHP_DEBUGGING_INI};
+        printf "xdebug.remote_autostart=on\n" >> ${PHP_DEBUGGING_INI};
+        printf "xdebug.remote_connect_back=off\n" >> ${PHP_DEBUGGING_INI};
+        printf "xdebug.remote_handler=dbgp\n" >> ${PHP_DEBUGGING_INI};
+        printf "xdebug.profiler_enable_trigger=on\n" >> ${PHP_DEBUGGING_INI};
+        printf "xdebug.profiler_output_dir=/config/log/xdebug\n" >> ${PHP_DEBUGGING_INI};
+        printf "xdebug.remote_host=$XDEBUG_CONFIG_HOST\n" >> ${PHP_DEBUGGING_INI};
+        printf "xdebug.remote_port=$XDEBUG_CONFIG_PORT\n" >> ${PHP_DEBUGGING_INI};
+        printf "xdebug.idekey=$XDEBUG_CONFIG_IDEKEY\n" >> ${PHP_DEBUGGING_INI};
+        printf "xdebug.var_display_max_data = -1\n" >> ${PHP_DEBUGGING_INI};
+        printf "xdebug.var_display_max_children = -1\n" >> ${PHP_DEBUGGING_INI};
+        printf "xdebug.var_display_max_depth = -1\n" >> ${PHP_DEBUGGING_INI};
+    fi
+
+    if [[ $(echo "${ENABLE_WEBGRIND}" | tr '[:upper:]' '[:lower:]') != "true" ]]; then
+        # Disable webgrind in this container
+        echo "**** (${SCRIPT_NAME} - php_debugging_config) Disabling Webgrind application for php profiling (${ENABLE_WEBGRIND})****";
+        rm -rf /tools/webgrind
+    else
+        echo "**** (${SCRIPT_NAME} - php_debugging_config) Webgrind application enabled for php profiling (${ENABLE_WEBGRIND})****";
+    fi
+}
+
+configure_phpfpm;
+php_debugging_config;
