@@ -11,6 +11,11 @@ apache_config() {
         /config/etc/apache2 \
         /logs/apache2${APACHE_SUFFIX} \
         /run/apache2
+
+    APACHE_CONF_SOURCE=/etc/apache2_src;
+    if [[ ! -e /etc/apache2_src ]]; then
+        mv /etc/apache2 ${APACHE_CONF_SOURCE};
+    fi
     if [[ ! -f /config/etc/apache2/apache2.conf ]]; then
         echo "**** (${SCRIPT_NAME} - apache_config) Setting up initial apache2 configs ****";
         mkdir -p \
@@ -18,7 +23,7 @@ apache_config() {
             /config/etc/apache2/sites-available \
             /config/etc/apache2/sites-enabled;
         # Copy the default configs from /etc to /config
-        cp -rf /etc/apache2/* /config/etc/apache2/;
+        cp -rf ${APACHE_CONF_SOURCE}/* /config/etc/apache2/;
         # Copy defaults to /config
         cp -rf /defaults/apache2/etc/apache2/* /config/etc/apache2/;
         # Remove current sites
@@ -29,6 +34,11 @@ apache_config() {
         cd /config/etc/apache2/sites-enabled/;
         ln -s ../sites-available/default.conf default.conf;
         cd ${CWD};
+    fi
+    if [[ ! -h /etc/apache2 ]]; then
+        echo "**** (${SCRIPT_NAME} - apache_config) Symlink /etc/apache2 -> /config/etc/apache2 ****";
+        rm -rf /etc/apache2;
+        ln -s /config/etc/apache2 /etc/apache2;
     fi
     # Install the default placeholder html file
     if [[ $(find /app/www -type f | wc -l) -eq 0 ]]; then
@@ -45,7 +55,7 @@ apache_config() {
         sed -i -e "s|APACHE_LOG_DIR=.*$|APACHE_LOG_DIR=${APACHE_LOG_DIR}|" /config/etc/apache2/envvars;
     fi
     # Now that the apache variables are set, lets import all of them
-    source /etc/apache2/envvars;
+    source /config/etc/apache2/envvars;
     # Remove any previous pid files
     if [[ -f ${APACHE_PID_FILE} ]]; then
         rm -f ${APACHE_PID_FILE};
@@ -57,23 +67,44 @@ apache_config() {
     if [[ ! -h /var/log/apache2${APACHE_SUFFIX}/access.log ]]; then
         echo "**** (${SCRIPT_NAME} - apache_config) Redirect default apache2 access.log to stdout ****";
         cd /var/log/apache2${APACHE_SUFFIX};
-        rm -rf access.log;
+        rm -f access.log;
         ln -s /dev/stdout access.log;
         cd ${CWD};
     fi
     if [[ ! -h /var/log/apache2${APACHE_SUFFIX}/error.log ]]; then
         echo "**** (${SCRIPT_NAME} - apache_config) Redirect default apache2 error.log to stderr ****";
         cd /var/log/apache2${APACHE_SUFFIX};
-        rm -rf error.log;
+        rm -f error.log;
         ln -s /dev/stderr error.log;
         cd ${CWD};
     fi
     if [[ ! -h /var/log/apache2${APACHE_SUFFIX}/other_vhosts_access.log ]]; then
         echo "**** (${SCRIPT_NAME} - apache_config) Redirect default apache2 other_vhosts_access.log to stdout ****";
         cd /var/log/apache2${APACHE_SUFFIX};
-        rm -rf other_vhosts_access.log;
+        rm -f other_vhosts_access.log;
         ln -s /dev/stdout other_vhosts_access.log;
         cd ${CWD};
+    fi
+    # Set mpm module
+    if [[ ! -z ${APACHE_MPM_MODULE} ]]; then
+        if [[ ${APACHE_MPM_MODULE} == 'prefork' ]]; then
+            echo "**** (${SCRIPT_NAME} - apache_config) Setting apache mpm to prefork ****";
+            a2dismod mpm_worker
+            a2dismod mpm_event
+            a2enmod mpm_prefork
+        fi
+        if [[ ${APACHE_MPM_MODULE} == 'worker' ]]; then
+            echo "**** (${SCRIPT_NAME} - apache_config) Setting apache mpm to event ****";
+            a2dismod mpm_prefork
+            a2dismod mpm_event
+            a2enmod mpm_worker
+        fi
+        if [[ ${APACHE_MPM_MODULE} == 'event' ]]; then
+            echo "**** (${SCRIPT_NAME} - apache_config) Setting apache mpm to event ****";
+            a2dismod mpm_prefork
+            a2dismod mpm_worker
+            a2enmod mpm_event
+        fi
     fi
     # Finally set permissions on all folders
     chown -R $PUID:$PGID \
