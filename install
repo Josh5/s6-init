@@ -13,21 +13,21 @@ install_package() {
         PACKAGE=${1};
         # Install defaults
         if [[ -d ${PACKAGE_DIR}/${PACKAGE}/defaults ]]; then
-            echo "    [${PACKAGE}] Installing defaults to ${INSTALL_DEST}/defaults/${PACKAGE}";
-            mkdir -p ${INSTALL_DEST}/defaults/${PACKAGE};
-            cp -rf ${PACKAGE_DIR}/${PACKAGE}/defaults/* ${INSTALL_DEST}/defaults/${PACKAGE}/;
+            echo "    [${PACKAGE}] Installing defaults to ${INSTALL_DEST%/}/defaults/${PACKAGE}";
+            mkdir -p ${INSTALL_DEST%/}/defaults/${PACKAGE};
+            cp -rf ${PACKAGE_DIR}/${PACKAGE}/defaults/* ${INSTALL_DEST%/}/defaults/${PACKAGE}/;
         fi
         # Install etc
         if [[ -d ${PACKAGE_DIR}/${PACKAGE}/etc ]]; then
-            echo "    [${PACKAGE}] Installing etc to ${INSTALL_DEST}/etc";
-            mkdir -p ${INSTALL_DEST}/etc;
-            cp -rf ${PACKAGE_DIR}/${PACKAGE}/etc/* ${INSTALL_DEST}/etc/;
+            echo "    [${PACKAGE}] Installing etc to ${INSTALL_DEST%/}/etc";
+            mkdir -p ${INSTALL_DEST%/}/etc;
+            cp -rf ${PACKAGE_DIR}/${PACKAGE}/etc/* ${INSTALL_DEST%/}/etc/;
         fi
         # Install usr
         if [[ -d ${PACKAGE_DIR}/${PACKAGE}/usr ]]; then
-            echo "    [${PACKAGE}] Installing usr to ${INSTALL_DEST}/usr";
-            mkdir -p ${INSTALL_DEST}/usr;
-            cp -rf ${PACKAGE_DIR}/${PACKAGE}/usr/* ${INSTALL_DEST}/usr/;
+            echo "    [${PACKAGE}] Installing usr to ${INSTALL_DEST%/}/usr";
+            mkdir -p ${INSTALL_DEST%/}/usr;
+            cp -rf ${PACKAGE_DIR}/${PACKAGE}/usr/* ${INSTALL_DEST%/}/usr/;
         fi
     fi
 }
