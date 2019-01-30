@@ -89,21 +89,59 @@ apache_config() {
     if [[ ! -z ${APACHE_MPM_MODULE} ]]; then
         if [[ ${APACHE_MPM_MODULE} == 'prefork' ]]; then
             echo "**** (${SCRIPT_NAME} - apache_config) Setting apache mpm to prefork ****";
+            MPM_CONFIG=/config/etc/apache2/mods-available/mpm_prefork.conf
             a2dismod mpm_worker
             a2dismod mpm_event
             a2enmod mpm_prefork
         fi
         if [[ ${APACHE_MPM_MODULE} == 'worker' ]]; then
             echo "**** (${SCRIPT_NAME} - apache_config) Setting apache mpm to event ****";
+            MPM_CONFIG=/config/etc/apache2/mods-available/mpm_worker.conf
             a2dismod mpm_prefork
             a2dismod mpm_event
             a2enmod mpm_worker
         fi
         if [[ ${APACHE_MPM_MODULE} == 'event' ]]; then
             echo "**** (${SCRIPT_NAME} - apache_config) Setting apache mpm to event ****";
+            MPM_CONFIG=/config/etc/apache2/mods-available/mpm_event.conf
             a2dismod mpm_prefork
             a2dismod mpm_worker
             a2enmod mpm_event
+        fi
+        # If configured, set the number of StartServers
+        if [[ ! -z ${MPM_CONFIG} && ! -z ${APACHE_MPM_START_SERVERS} ]]; then
+            echo "**** (${SCRIPT_NAME} - apache_config) Setting apache mpm StartServers = ${APACHE_MPM_START_SERVERS} ****";
+            sed -i -e "s|StartServers.*$|StartServers                ${APACHE_MPM_START_SERVERS}|" ${MPM_CONFIG};
+        fi
+        # If configured, set the number of MinSpareThreads
+        if [[ ! -z ${MPM_CONFIG} && ! -z ${APACHE_MPM_MIN_SPARE_THREADS} ]]; then
+            echo "**** (${SCRIPT_NAME} - apache_config) Setting apache mpm MinSpareThreads = ${APACHE_MPM_MIN_SPARE_THREADS} ****";
+            sed -i -e "s|MinSpareThreads.*$|MinSpareThreads             ${APACHE_MPM_MIN_SPARE_THREADS}|" ${MPM_CONFIG};
+        fi
+        # If configured, set the number of MaxSpareThreads
+        if [[ ! -z ${MPM_CONFIG} && ! -z ${APACHE_MPM_MAX_SPARE_THREADS} ]]; then
+            echo "**** (${SCRIPT_NAME} - apache_config) Setting apache mpm MaxSpareThreads = ${APACHE_MPM_MAX_SPARE_THREADS} ****";
+            sed -i -e "s|MaxSpareThreads.*$|MaxSpareThreads             ${APACHE_MPM_MAX_SPARE_THREADS}|" ${MPM_CONFIG};
+        fi
+        # If configured, set the number of ThreadLimit
+        if [[ ! -z ${MPM_CONFIG} && ! -z ${APACHE_MPM_THREAD_LIMIT} ]]; then
+            echo "**** (${SCRIPT_NAME} - apache_config) Setting apache mpm ThreadLimit = ${APACHE_MPM_THREAD_LIMIT} ****";
+            sed -i -e "s|ThreadLimit.*$|ThreadLimit                 ${APACHE_MPM_THREAD_LIMIT}|" ${MPM_CONFIG};
+        fi
+        # If configured, set the number of ThreadsPerChild
+        if [[ ! -z ${MPM_CONFIG} && ! -z ${APACHE_MPM_THREADS_PER_CHILD} ]]; then
+            echo "**** (${SCRIPT_NAME} - apache_config) Setting apache mpm ThreadsPerChild = ${APACHE_MPM_THREADS_PER_CHILD} ****";
+            sed -i -e "s|ThreadsPerChild.*$|ThreadsPerChild             ${APACHE_MPM_THREADS_PER_CHILD}|" ${MPM_CONFIG};
+        fi
+        # If configured, set the number of MaxRequestWorkers
+        if [[ ! -z ${MPM_CONFIG} && ! -z ${APACHE_MPM_MAX_REQ_WORKERS} ]]; then
+            echo "**** (${SCRIPT_NAME} - apache_config) Setting apache mpm MaxRequestWorkers = ${APACHE_MPM_MAX_REQ_WORKERS} ****";
+            sed -i -e "s|MaxRequestWorkers.*$|MaxRequestWorkers           ${APACHE_MPM_MAX_REQ_WORKERS}|" ${MPM_CONFIG};
+        fi
+        # If configured, set the number of MaxConnectionsPerChild
+        if [[ ! -z ${MPM_CONFIG} && ! -z ${APACHE_MPM_MAX_CONN_PER_CHILD} ]]; then
+            echo "**** (${SCRIPT_NAME} - apache_config) Setting apache mpm MaxConnectionsPerChild = ${APACHE_MPM_MAX_CONN_PER_CHILD} ****";
+            sed -i -e "s|MaxConnectionsPerChild.*$|MaxConnectionsPerChild      ${APACHE_MPM_MAX_CONN_PER_CHILD}|" ${MPM_CONFIG};
         fi
     fi
     # Finally set permissions on all folders
