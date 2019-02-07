@@ -19,7 +19,7 @@ fi
 
 configure_phpfpm() {
     mkdir -p \
-        /tmp/php/sessions \
+        /var/lib/php/sessions \
         /config/log/php \
         /run/php
     # Setup initial php configs
@@ -79,7 +79,7 @@ configure_phpfpm() {
     fi
     # Set permissions of the php directorys
     chown -R ${PUID}:${PGID} \
-        /tmp/php/sessions \
+        /var/lib/php/sessions \
         /config/log/php \
         /config/etc/php \
         /run/php
