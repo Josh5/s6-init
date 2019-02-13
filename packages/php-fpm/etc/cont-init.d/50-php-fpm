@@ -22,12 +22,17 @@ configure_phpfpm() {
         /var/lib/php/sessions \
         /config/log/php \
         /run/php
+
+    PHP_CONF_SOURCE=/etc/php;
+    if [[ ! -e /etc/php ]]; then
+        mv /etc/php ${PHP_CONF_SOURCE};
+    fi
     # Setup initial php configs
-    if [[ ! -d /config/etc/php ]]; then
+    if [[ ! -f ${PHP_INI} ]]; then
         echo "**** (${SCRIPT_NAME} - configure_phpfpm) Setting up initial php configs ****";
         mkdir -p /config/etc/php;
         # Copy default config files
-        cp -rf /etc/php/* /config/etc/php/;
+        cp -rf ${PHP_CONF_SOURCE}/* /config/etc/php/;
         # Overide with user provided config files
         if [[ -e /defaults/etc/php ]]; then
             cp -rf /defaults/etc/php/* /config/etc/php/;
@@ -73,7 +78,7 @@ configure_phpfpm() {
     fi
     # Link php config folder to /config
     if [[ ! -h /etc/php ]]; then
-        echo "**** (${SCRIPT_NAME} - configure_phpfpm) Binding php config folder ****";
+        echo "**** (${SCRIPT_NAME} - configure_phpfpm) Symlink /etc/php -> /config/etc/php ****";
         rm -rf /etc/php;
         ln -s /config/etc/php /etc/php;
     fi
