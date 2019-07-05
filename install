@@ -6,6 +6,10 @@ BASE_DIR="$( cd "$( dirname "$( readlink -f "${BASH_SOURCE[0]}")" )" && pwd )";
 PACKAGE_DIR=${BASE_DIR}/packages;
 INSTALL_DEST=${INSTALL_DEST:-/};
 
+# Set script colours
+CLRED="\e[91m";
+CNORM="\e[0m";
+
 
 # Install the package
 install_package() {
@@ -34,7 +38,19 @@ install_package() {
 
 
 # Run
-for PACKAGE in ${SERVICES}; do
-    echo "**** Installing ini scripts for package: ${PACKAGE} ****";
+if [[ -z ${S6_INIT_PACKAGES} ]]; then
+    echo -ne "${CLRED}";
+    echo
+    echo "!!WARNING!! No s6-init packages specified.";
+    echo
+    echo "Ensure you have the 'S6_INIT_PACKAGES' ARG configured in your Dockerfile.";
+    echo "Example:";
+    echo "    ARG S6_INIT_PACKAGES='nginx'";
+    echo
+    echo -ne "${CNORM}";
+    exit 1
+fi
+for PACKAGE in ${S6_INIT_PACKAGES}; do
+    echo "**** Installing package: ${S6_INIT_PACKAGES} ****";
     install_package ${PACKAGE};
 done
