@@ -12,8 +12,23 @@ configure_nginx() {
         /var/tmp/nginx \
         /run/nginx \
         /tmp
+
+    NGINX_CONF_SOURCE=/etc/nginx_src;
+    if [[ ! -e /etc/nginx_src ]]; then
+        mv /etc/nginx ${NGINX_CONF_SOURCE};
+    fi
     if [[ ! -f /config/nginx/nginx.conf ]]; then
+        echo "**** (${SCRIPT_NAME} - configure_nginx) Setting up initial nginx configs ****";
+        mkdir -p /config/etc/nginx;
+        # Copy the default configs from /etc to /config
+        cp -rf ${NGINX_CONF_SOURCE}/* /config/etc/nginx/;
+        # Copy defaults to /config
         cp /defaults/nginx/nginx.conf /config/nginx/nginx.conf;
+    fi
+    if [[ ! -h /etc/nginx ]]; then
+        echo "**** (${SCRIPT_NAME} - configure_nginx) Symlink /etc/nginx -> /config/etc/nginx ****";
+        rm -rf /etc/nginx;
+        ln -s /config/etc/nginx /etc/nginx;
     fi
     if [[ ! -z ${NGINX_LOG_DIR} ]]; then
         echo "**** (${SCRIPT_NAME} - configure_nginx) Update Nginx NGINX_LOG_DIR environment variable to '${NGINX_LOG_DIR}' ****";
