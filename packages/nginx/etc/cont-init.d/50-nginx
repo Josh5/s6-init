@@ -6,7 +6,8 @@ SCRIPT_NAME=$(basename $BASH_SOURCE);
 configure_nginx() {
     echo "**** (${SCRIPT_NAME} - configure_nginx) Create folders ****";
     mkdir -p \
-        /config/nginx/site-confs \
+        /app/www \
+        /config/etc/nginx/site-confs \
         /var/lib/nginx/tmp/client_body \
         /var/log/nginx \
         /var/tmp/nginx \
@@ -17,26 +18,32 @@ configure_nginx() {
     if [[ ! -e /etc/nginx_src ]]; then
         mv /etc/nginx ${NGINX_CONF_SOURCE};
     fi
-    if [[ ! -f /config/nginx/nginx.conf ]]; then
+    if [[ ! -f /config/etc/nginx/nginx.conf ]]; then
         echo "**** (${SCRIPT_NAME} - configure_nginx) Setting up initial nginx configs ****";
         mkdir -p /config/etc/nginx;
         # Copy the default configs from /etc to /config
         cp -rf ${NGINX_CONF_SOURCE}/* /config/etc/nginx/;
         # Copy defaults to /config
-        cp /defaults/nginx/nginx.conf /config/nginx/nginx.conf;
+        cp /defaults/nginx/default.conf /config/etc/nginx/site-confs/default.conf;
+        cp /defaults/nginx/nginx.conf /config/etc/nginx/nginx.conf;
     fi
     if [[ ! -h /etc/nginx ]]; then
         echo "**** (${SCRIPT_NAME} - configure_nginx) Symlink /etc/nginx -> /config/etc/nginx ****";
         rm -rf /etc/nginx;
         ln -s /config/etc/nginx /etc/nginx;
     fi
+    # Install the default placeholder html file
+    if [[ $(find /app/www -type f | wc -l) -eq 0 ]]; then
+        echo "**** (${SCRIPT_NAME} - configure_nginx) Install default index page ****";
+        cp /defaults/nginx/index.html /app/www/index.html;
+    fi
     if [[ ! -z ${NGINX_LOG_DIR} ]]; then
         echo "**** (${SCRIPT_NAME} - configure_nginx) Update Nginx NGINX_LOG_DIR environment variable to '${NGINX_LOG_DIR}' ****";
         # Update log dir
         mkdir -p ${NGINX_LOG_DIR};
         chown -R ${PUID}:${PGID} ${NGINX_LOG_DIR};
-        sed -i -e "s|access_log .*$|error_log ${NGINX_LOG_DIR}/access.log;|" /config/nginx/nginx.conf;
-        sed -i -e "s|error_log .*$|error_log ${NGINX_LOG_DIR}/error.log;|" /config/nginx/nginx.conf;
+        sed -i -e "s|access_log .*$|error_log ${NGINX_LOG_DIR}/access.log;|" /config/etc/nginx/nginx.conf;
+        sed -i -e "s|error_log .*$|error_log ${NGINX_LOG_DIR}/error.log;|" /config/etc/nginx/nginx.conf;
         # Update logrotate
         sed -i -e "s|LOGS {|${NGINX_LOG_DIR}/*.log {|" /etc/logrotate.d/nginx;
         chmod 644 /etc/logrotate.d/nginx;
@@ -61,14 +68,16 @@ configure_nginx() {
     fi
     # Permissions
     chown -R ${PUID}:${PGID} \
-        /config/nginx \
+        /app/www
+        /config/etc/nginx \
         /var/lib/nginx \
         /var/log/nginx \
         /var/tmp/nginx \
         /run/nginx
     chmod -R g+w \
-        /config/nginx;
-    chmod -R 777 /tmp;
+        /config/etc/nginx\
+        /app/www
+    chmod -R 777 /tmp
 }
 
 configure_nginx;
