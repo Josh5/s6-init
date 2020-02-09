@@ -68,7 +68,7 @@ configure_nginx() {
     fi
     # Permissions
     chown -R ${PUID}:${PGID} \
-        /app/www
+        /app/www \
         /config/etc/nginx \
         /var/lib/nginx \
         /var/log/nginx \
