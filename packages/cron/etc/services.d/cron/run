@@ -1,3 +1,8 @@
 #!/usr/bin/with-contenv bash
 
-exec /usr/sbin/cron -f
+cron_bin=$(command -v cron)
+if [[ -z ${cron_bin} ]]; then
+    cron_bin=$(command -v crond)
+fi
+
+exec ${cron_bin} -f
